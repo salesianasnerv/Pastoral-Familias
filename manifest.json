@@ -1,6 +1,6 @@
 {
-  "name": "Buenos Días | Salesianas Nervión",
-  "short_name": "Buenos Días",
+  "name": "Pastoral | Salesianas Nervión",
+  "short_name": "Pastoral",
   "description": "Recursos diarios de Buenos Días del Equipo de Pastoral de Salesianas Nervión",
   "start_url": "./index.html",
   "display": "standalone",
