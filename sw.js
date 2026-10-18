@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buenos-dias-v1';
+const CACHE_NAME = 'buenos-dias-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
