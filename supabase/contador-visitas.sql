@@ -33,7 +33,7 @@ revoke all on table pas_visitas from public, anon, authenticated;
 create or replace function pas_contar(p_evento text, p_etapa text default '', p_prueba boolean default false)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if p_evento not in ('entrada', 'etapa', 'recurso', 'video', 'lema', 'aqui_y_ahora') then return; end if;
+  if p_evento not in ('entrada', 'etapa', 'recurso', 'video', 'lema', 'aqui_y_ahora', 'instalar') then return; end if;
   if coalesce(p_etapa, '') not in ('', 'Infantil', '1º-3º EPO', '4º-6º EPO', 'ESO y Bachillerato', 'CCFF') then return; end if;
 
   insert into pas_visitas as v (dia, evento, etapa, prueba, total)

@@ -130,6 +130,27 @@
       transform: translateY(-1px);
     }
 
+    /* BOTÓN INSTALAR COMO APP */
+    .header-botones { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+    .btn-instalar {
+      background: white;
+      color: var(--azul-salesianas);
+      border: 2px solid var(--azul-salesianas);
+      padding: 0.55rem 1.3rem;
+      border-radius: 999px;
+      font-family: 'Fira Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+    .btn-instalar:hover { background: var(--azul-salesianas); color: white; }
+    .btn-instalar[hidden] { display: none; }
+    .pasos-instalar { text-align: left; margin: 0.8rem 0 0.4rem; padding-left: 1.2rem; line-height: 1.6; color: var(--text); font-size: 0.95rem; }
+
     /* CONTENEDOR PRINCIPAL */
     main {
       flex: 1;
@@ -670,9 +691,14 @@
 
       <div class="header-blue-divider"></div>
 
-      <button class="btn-lema" onclick="openLemaModal()">
-        ✨ Lema del Curso
-      </button>
+      <div class="header-botones">
+        <button class="btn-lema" onclick="openLemaModal()">
+          ✨ Lema del Curso
+        </button>
+        <button class="btn-instalar" id="btnInstalar" onclick="instalarApp()" hidden>
+          📲 Instalar como app
+        </button>
+      </div>
     </div>
   </header>
 
@@ -732,6 +758,15 @@
     </div>
   </div>
 
+  <!-- MODAL INSTALAR COMO APP -->
+  <div class="modal-overlay" id="instalarModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="document.getElementById('instalarModal').classList.remove('open')">✕</button>
+      <h2 style="color: var(--azul-salesianas); margin-bottom: 0.3rem;">📲 Instalar como app</h2>
+      <div id="instalarTexto"></div>
+    </div>
+  </div>
+
   <footer>
     Escuelas Salesianas María Auxiliadora · Nervión (Sevilla)
   </footer>
@@ -759,7 +794,8 @@
     const CONTADOR_URL = 'https://hblayjaknhfxieqbzrlq.supabase.co/rest/v1/rpc/pas_contar';
     const CONTADOR_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhibGF5amFrbmhmeGllcWJ6cmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMjg0ODEsImV4cCI6MjEwNjgwNDQ4MX0.K2iWyQAt9upNBXUhdZuV-Nle9fkCMYgQ6jTBBO0MluE';
     // Lo que no venga de la web real (local, pruebas) se marca como prueba y no sale en las cifras
-    const CONTADOR_PRUEBA = location.hostname !== 'salesianasnerv.github.io';
+    // (la web real está en Vercel, que es la que se mete en nervion.salesianas.org, y en GitHub Pages)
+    const CONTADOR_PRUEBA = !['pastoral-familias.vercel.app', 'salesianasnerv.github.io'].includes(location.hostname);
     function contar(evento, etapa) {
       try {
         fetch(CONTADOR_URL, {
@@ -1067,6 +1103,53 @@
 
     // CARGA INICIAL
     cargarDatosDesdeSheets();
+
+    // INSTALAR COMO APP
+    // Si la web está metida dentro de otra (p. ej. en nervion.salesianas.org), el navegador no deja instalarla:
+    // el botón la abre en una pestaña propia, y allí ya se puede instalar.
+    const WEB_PROPIA = location.origin + location.pathname;  // la propia web, fuera de la del colegio
+    const enOtraWeb = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+    const yaInstalada = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let avisoInstalar = null;
+    document.getElementById('btnInstalar').hidden = !!yaInstalada;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); avisoInstalar = e; });
+    window.addEventListener('appinstalled', () => { document.getElementById('btnInstalar').hidden = true; });
+
+    function mostrarPasosInstalar() {
+      document.getElementById('instalarTexto').innerHTML = esIOS
+        ? `<ol class="pasos-instalar">
+             <li>Abre esta página en <strong>Safari</strong>.</li>
+             <li>Pulsa el botón <strong>Compartir</strong> (el cuadrado con una flecha hacia arriba).</li>
+             <li>Elige <strong>«Añadir a pantalla de inicio»</strong> y pulsa <strong>Añadir</strong>.</li>
+           </ol>`
+        : `<ol class="pasos-instalar">
+             <li>Abre el menú del navegador (<strong>⋮</strong> arriba a la derecha).</li>
+             <li>Elige <strong>«Instalar aplicación»</strong> o <strong>«Añadir a pantalla de inicio»</strong>.</li>
+           </ol>`;
+      document.getElementById('instalarModal').classList.add('open');
+    }
+
+    async function instalarApp() {
+      contar('instalar');
+      if (enOtraWeb) { window.open(WEB_PROPIA + '?instalar=1', '_blank', 'noopener'); return; }
+      if (avisoInstalar) { avisoInstalar.prompt(); await avisoInstalar.userChoice; avisoInstalar = null; return; }
+      mostrarPasosInstalar();
+    }
+
+    // Al llegar desde la web del colegio con ?instalar=1, se explica cómo terminar la instalación
+    if (!enOtraWeb && !yaInstalada && new URLSearchParams(location.search).has('instalar')) {
+      history.replaceState(null, '', location.pathname);
+      window.addEventListener('load', () => setTimeout(() => {
+        if (avisoInstalar) {
+          document.getElementById('instalarTexto').innerHTML = `<p class="modal-lema-desc">Ya casi está. Pulsa el botón para añadir los Buenos días a tu móvil.</p>
+            <button class="resource-btn" style="border:none; cursor:pointer; width:100%;" onclick="document.getElementById('instalarModal').classList.remove('open'); instalarApp();">📲 Instalar ahora</button>`;
+          document.getElementById('instalarModal').classList.add('open');
+        } else {
+          mostrarPasosInstalar();
+        }
+      }, 600));
+    }
 
     // PWA: registro del service worker (permite instalar la web como app)
     if ('serviceWorker' in navigator) {

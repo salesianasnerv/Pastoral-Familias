@@ -54,7 +54,7 @@
     .periodo.active { background: var(--azul-salesianas); border-color: var(--azul-salesianas); color: #fff; }
     .rango { font-size: 0.88rem; color: var(--text-muted); margin-top: 0.6rem; }
 
-    .cifras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; }
+    .cifras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
     @media (max-width: 760px) { .cifras { grid-template-columns: repeat(2, 1fr); } }
     .cifra { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); }
     .cifra .num { font-size: 1.8rem; font-weight: 700; color: var(--azul-salesianas); font-variant-numeric: tabular-nums; }
@@ -220,6 +220,7 @@
         <div class="cifra"><div class="num" id="cRecurso">0</div><div class="txt">Buenos días abiertos</div></div>
         <div class="cifra"><div class="num" id="cVideo">0</div><div class="txt">Vídeos abiertos</div></div>
         <div class="cifra"><div class="num" id="cLema">0</div><div class="txt">Lema del curso</div></div>
+        <div class="cifra"><div class="num" id="cInstalar">0</div><div class="txt">Pulsan «Instalar como app»</div></div>
       </div>
 
       <div class="card" style="margin-top:1.2rem;">
@@ -310,6 +311,7 @@
             out.push({ dia, evento: 'video', etapa: e, total: Math.round(k * 0.3) });
           });
           out.push({ dia, evento: 'lema', etapa: '', total: Math.round(Math.random() * 4) });
+          out.push({ dia, evento: 'instalar', etapa: '', total: Math.round(Math.random() * 3) });
         }
         d.setDate(d.getDate() + 1);
       }
@@ -335,6 +337,7 @@
       $('cRecurso').textContent = suma('recurso').toLocaleString('es-ES');
       $('cVideo').textContent = suma('video').toLocaleString('es-ES');
       $('cLema').textContent = (suma('lema') + suma('aqui_y_ahora')).toLocaleString('es-ES');
+      $('cInstalar').textContent = suma('instalar').toLocaleString('es-ES');
 
       // Gráfica por día
       const porDia = {}; filas.filter(f => f.evento === 'entrada').forEach(f => porDia[f.dia] = (porDia[f.dia] || 0) + f.total);
@@ -353,7 +356,7 @@
     }
 
     function descargarCSV() {
-      const nombres = { entrada: 'Visita a la web', etapa: 'Elige etapa', recurso: 'Abre el Buenos días', video: 'Abre el vídeo', lema: 'Lema del curso', aqui_y_ahora: 'Aquí y ahora' };
+      const nombres = { entrada: 'Visita a la web', etapa: 'Elige etapa', recurso: 'Abre el Buenos días', video: 'Abre el vídeo', lema: 'Lema del curso', aqui_y_ahora: 'Aquí y ahora', instalar: 'Instalar como app' };
       const lineas = ['Día;Qué;Etapa;Total', ...filas.map(f => `${fmt(f.dia)};${nombres[f.evento] || f.evento};${ETAPAS_TXT[f.etapa] || ''};${f.total}`)];
       const blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `visitas-buenos-dias-${desde}-a-${hasta}.csv` });
