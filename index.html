@@ -192,6 +192,32 @@
       box-shadow: 0 4px 12px rgba(0, 154, 187, 0.3);
     }
 
+    /* MÓVIL: ETAPAS EN DOS FILAS (igual que en la web del claustro) */
+    @media (max-width: 560px) {
+      .stages-main { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+      .stage-pill { min-width: 0; }
+    }
+
+    /* AVISO: ELIGE ETAPA (igual que en la web del claustro) */
+    .picker-label {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: -0.2rem;
+    }
+    .calendar-placeholder {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2.5rem 1rem;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .calendar-placeholder p { margin-top: 0.5rem; font-size: 0.98rem; }
+    .calendar-placeholder.hidden,
+    .layout-grid.hidden {
+      display: none;
+    }
+
     /* SUBETAPAS PRIMARIA */
     .substages-container {
       display: none;
@@ -653,8 +679,9 @@
   <main>
     <!-- SELECTOR DE ETAPAS -->
     <div class="stages-nav">
+      <p class="picker-label">Selecciona la etapa:</p>
       <div class="stages-main">
-        <button class="stage-pill active" onclick="selectMainStage('Infantil', this)">👶 1. Infantil</button>
+        <button class="stage-pill" onclick="selectMainStage('Infantil', this)">👶 1. Infantil</button>
         <button class="stage-pill" onclick="selectMainStage('Primaria', this)">🎒 2. Primaria</button>
         <button class="stage-pill" onclick="selectMainStage('ESO y Bachillerato', this)">📖 3. ESO y Bachillerato</button>
         <button class="stage-pill" onclick="selectMainStage('CCFF', this)">🎓 4. CCFF</button>
@@ -670,7 +697,12 @@
     <div class="section-divider"></div>
 
     <!-- CALENDARIO Y DETALLE -->
-    <div class="layout-grid">
+    <div class="calendar-placeholder" id="calendarPlaceholder">
+      <span style="font-size: 1.6rem;">👆</span>
+      <p>Elige una etapa arriba para ver su calendario.</p>
+    </div>
+
+    <div class="layout-grid hidden" id="layoutGrid">
       <div class="card">
         <div class="cal-header">
           <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
@@ -694,7 +726,7 @@
       <p class="modal-lema-desc">
         Aquí encontrarás el cartel oficial, lema e himno anual, así como recursos comunes de pastoral para todas las casas de las Salesianas de España.
       </p>
-      <a href="https://salesianas.org/aqui-y-ahora/" target="_blank" class="resource-btn" style="background: var(--verde-salesianas);">
+      <a href="https://salesianas.org/aqui-y-ahora/" target="_blank" class="resource-btn" style="background: var(--verde-salesianas);" onclick="contar('aqui_y_ahora')">
         📁 Aquí y ahora - Recursos pastorales
       </a>
     </div>
@@ -722,15 +754,33 @@
 
     let buenosDiasData = [];
 
+    // CONTADOR DE VISITAS (anónimo: solo día, qué se pulsa y etapa; sin cookies ni datos personales)
+    // Las cifras las ve el grupo Pastoral en /visitas. SQL: supabase/contador-visitas.sql
+    const CONTADOR_URL = 'https://hblayjaknhfxieqbzrlq.supabase.co/rest/v1/rpc/pas_contar';
+    const CONTADOR_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhibGF5amFrbmhmeGllcWJ6cmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMjg0ODEsImV4cCI6MjEwNjgwNDQ4MX0.K2iWyQAt9upNBXUhdZuV-Nle9fkCMYgQ6jTBBO0MluE';
+    // Lo que no venga de la web real (local, pruebas) se marca como prueba y no sale en las cifras
+    const CONTADOR_PRUEBA = location.hostname !== 'salesianasnerv.github.io';
+    function contar(evento, etapa) {
+      try {
+        fetch(CONTADOR_URL, {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json', apikey: CONTADOR_ANON, Authorization: 'Bearer ' + CONTADOR_ANON },
+          body: JSON.stringify({ p_evento: evento, p_etapa: etapa || '', p_prueba: CONTADOR_PRUEBA })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+    contar('entrada');
+
     // FECHA DEL SISTEMA NORMALIZADA (00:00:00)
     const now = new Date();
     const realToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
 
-    // CONFIGURACIÓN INICIAL: INFANTIL POR DEFECTO
-    let currentMainStage = 'Infantil';
-    let currentActiveFilter = 'Infantil';
+    // CONFIGURACIÓN INICIAL: SIN ETAPA (la familia la elige antes de ver el calendario)
+    let currentMainStage = null;
+    let currentActiveFilter = null;
     let currentDate = new Date(realToday.getFullYear(), realToday.getMonth(), 1);
     let selectedDateStr = todayStr;
 
@@ -805,17 +855,23 @@
           };
         });
 
-        renderCalendar();
-        showDayDetail(selectedDateStr);
+        if (currentActiveFilter) {
+          renderCalendar();
+          showDayDetail(selectedDateStr);
+        }
       } catch (error) {
         console.error("Error al cargar la hoja de Google Sheets:", error);
-        renderCalendar();
-        showDayDetail(selectedDateStr);
+        if (currentActiveFilter) {
+          renderCalendar();
+          showDayDetail(selectedDateStr);
+        }
       }
     }
 
     function selectMainStage(stage, elem) {
       currentMainStage = stage;
+      document.getElementById('calendarPlaceholder').classList.add('hidden');
+      document.getElementById('layoutGrid').classList.remove('hidden');
       document.querySelectorAll('.stage-pill').forEach(btn => btn.classList.remove('active'));
       elem.classList.add('active');
 
@@ -831,6 +887,7 @@
         subContainer.classList.remove('visible');
         currentActiveFilter = stage;
       }
+      contar('etapa', currentActiveFilter);
 
       renderCalendar();
       showDayDetail(selectedDateStr);
@@ -838,6 +895,7 @@
 
     function selectSubStage(subStage, elem) {
       currentActiveFilter = subStage;
+      contar('etapa', currentActiveFilter);
       document.querySelectorAll('.substage-pill').forEach(btn => btn.classList.remove('active'));
       elem.classList.add('active');
       renderCalendar();
@@ -983,14 +1041,14 @@
 
         <div class="detail-actions">
           ${item.enlacePrincipal ? `
-            <a href="${item.enlacePrincipal}" target="_blank" class="resource-btn">
+            <a href="${item.enlacePrincipal}" target="_blank" class="resource-btn" onclick="contar('recurso', currentActiveFilter)">
               📄 Abrir Recurso de Buenos Días
             </a>
           ` : ''}
 
           ${item.videoUrl ? `
             <div class="extra-links">
-              <a href="${item.videoUrl}" target="_blank" class="extra-link-item">
+              <a href="${item.videoUrl}" target="_blank" class="extra-link-item" onclick="contar('video', currentActiveFilter)">
                 ▶️ ${textoBotonVideo}
               </a>
             </div>
@@ -1001,6 +1059,7 @@
 
     function openLemaModal() {
       document.getElementById('lemaModal').classList.add('open');
+      contar('lema');
     }
     function closeLemaModal() {
       document.getElementById('lemaModal').classList.remove('open');
